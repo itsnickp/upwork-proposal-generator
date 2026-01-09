@@ -46,8 +46,8 @@ Please write a compelling, personalized proposal that:
 
 Format the proposal ready to copy and paste into Upwork.`;
 
-    // Correct Gemini API endpoint - using gemini-1.5-flash (free tier)
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GOOGLE_API_KEY}`;
+    // Use gemini-2.5-flash (current free tier model)
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GOOGLE_API_KEY}`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
