@@ -1,11 +1,9 @@
-// api/generate.js - CORRECTED for Google Gemini API
+// api/generate.js
 export default async function handler(req, res) {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -23,11 +21,11 @@ export default async function handler(req, res) {
 
     if (!process.env.GOOGLE_API_KEY) {
       return res.status(500).json({ 
-        error: 'API key not configured. Please add GOOGLE_API_KEY to your Vercel environment variables.' 
+        error: 'API key not configured. Add GOOGLE_API_KEY to Vercel environment variables.' 
       });
     }
 
-    const prompt = `Generate a professional Upwork proposal for the following job posting.
+    const prompt = `Generate a professional Upwork proposal for this job posting.
 
 Job Description:
 ${jobDescription}
@@ -35,23 +33,22 @@ ${jobDescription}
 My Skills: ${skills || 'Not specified'}
 My Experience: ${experience || 'Not specified'}
 
-Please write a compelling, personalized proposal that:
+Write a compelling, personalized proposal that:
 1. Demonstrates understanding of the job requirements
 2. Highlights relevant skills and experience
 3. Shows enthusiasm for the project
 4. Includes a clear call to action
-5. Is concise and professional (around 150-200 words)
+5. Is concise and professional (150-200 words)
 
-Format the proposal ready to copy and paste into Upwork.`;
+Format ready to copy and paste into Upwork.`;
 
-    // Correct Gemini API format with proper header
+    // Use gemini-pro (the stable model) instead of gemini-2.5-flash
     const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.GOOGLE_API_KEY
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           contents: [{
@@ -74,7 +71,7 @@ Format the proposal ready to copy and paste into Upwork.`;
 
     const data = await response.json();
     
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
       return res.status(500).json({ 
         error: 'Invalid response from API',
         details: data
@@ -95,3 +92,21 @@ Format the proposal ready to copy and paste into Upwork.`;
     });
   }
 }
+```
+
+## Key Changes Made
+
+1. **Fixed API endpoint**: Changed from `gemini-2.5-flash` to `gemini-pro` (the actual available model)
+2. **Fixed authentication**: Moved API key to query parameter (the documented method for Gemini)
+3. **Removed redundant header**: `x-goog-api-key` header is not needed when using query param
+4. **Improved error handling**: Used optional chaining for safer access
+
+## Deployment Steps
+
+1. **Ensure correct structure**:
+```
+   your-project/
+   ├── api/
+   │   └── generate.js
+   └── public/
+       └── index.html
