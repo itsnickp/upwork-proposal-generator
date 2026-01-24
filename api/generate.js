@@ -1,4 +1,4 @@
-// api/generate.js
+// api/generate.js - Using Groq (FREE & VERY FAST)
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -19,9 +19,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Job description is required' });
     }
 
-    if (!process.env.GOOGLE_API_KEY) {
+    if (!process.env.GROQ_API_KEY) {
       return res.status(500).json({ 
-        error: 'API key not configured. Add GOOGLE_API_KEY to Vercel environment variables.' 
+        error: 'API key not configured. Add GROQ_API_KEY to Vercel environment variables.' 
       });
     }
 
@@ -38,31 +38,37 @@ Write a compelling, personalized proposal that:
 2. Highlights relevant skills and experience
 3. Shows enthusiasm for the project
 4. Includes a clear call to action
-5. Is concise and professional (150-200 words)
+5. Is concise and professional (150-200 words)`;
 
-Format ready to copy and paste into Upwork.`;
-
-    // Use gemini-pro (the stable model) instead of gemini-2.5-flash
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+      'https://api.groq.com/openai/v1/chat/completions',
       {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a professional proposal writer for freelance platforms.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
         })
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Google API error:', response.status, errorText);
+      console.error('Groq API error:', response.status, errorText);
       return res.status(response.status).json({ 
         error: `API request failed: ${response.statusText}`,
         details: errorText
@@ -71,16 +77,14 @@ Format ready to copy and paste into Upwork.`;
 
     const data = await response.json();
     
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       return res.status(500).json({ 
         error: 'Invalid response from API',
         details: data
       });
     }
 
-    const proposal = data.candidates[0].content.parts
-      .map(part => part.text)
-      .join('\n');
+    const proposal = data.choices[0].message.content.trim();
 
     return res.status(200).json({ proposal });
 
@@ -92,21 +96,3 @@ Format ready to copy and paste into Upwork.`;
     });
   }
 }
-```
-
-## Key Changes Made
-
-1. **Fixed API endpoint**: Changed from `gemini-2.5-flash` to `gemini-pro` (the actual available model)
-2. **Fixed authentication**: Moved API key to query parameter (the documented method for Gemini)
-3. **Removed redundant header**: `x-goog-api-key` header is not needed when using query param
-4. **Improved error handling**: Used optional chaining for safer access
-
-## Deployment Steps
-
-1. **Ensure correct structure**:
-```
-   your-project/
-   ├── api/
-   │   └── generate.js
-   └── public/
-       └── index.html
